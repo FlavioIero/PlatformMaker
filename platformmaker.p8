@@ -42,6 +42,8 @@ function reset_var()
 end
 
 function _init()
+	poke(0x5f2e,1)
+	pal({[0]=0,-15,1,-4,12,13,-1,7,2,-7,-8,8,9,-3,-2,-14},1)	reset_var()
 	reset_var()
 	_update = update_menu
 	_draw = draw_menu
@@ -72,12 +74,12 @@ function draw_menu()
 	local sp_y = 60
 	local sp_x = {32,60,88}
 	local pad = 6
-	rectfill(sp_x[m_p_sprt_i]-pad+1,sp_y-pad+1,sp_x[m_p_sprt_i]+7+pad-1,sp_y+7+pad-1,9)
+	rectfill(sp_x[m_p_sprt_i]-pad+1,sp_y-pad+1,sp_x[m_p_sprt_i]+7+pad-1,sp_y+7+pad-1,m_rect_cols[2])
 	for i=1,#m_p_sprts do
 		spr(m_p_sprts[i],sp_x[i],sp_y)
 	end
 	rect(sp_x[m_p_sprt_i]-pad,sp_y-pad,sp_x[m_p_sprt_i]+7+pad,sp_y+7+pad,m_rect_cols[m_rect_col_i])
-	print_ctr_w("🅾️ to select a character",70,7)
+	print_ctr_w("🅾️ to select a character",90,7)
 end
 
 -- temp
