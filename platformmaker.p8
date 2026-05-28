@@ -32,7 +32,7 @@ g_frm = 0
 function reset_var()
 	-- var
 	p_sp = vector2.new(20,110)
-	p = player.new(p_sp,1)
+	p = player:new({pos=p_sp,sprt=1})
 	-- menu
 	m_frm = 0
 	m_p_sprt_i = 1
@@ -220,153 +220,140 @@ end
 -->8
 -- player --
 
-player = {}
-player.__index = player
-
--- const
-local states = {jump=1,build=2,switch=3}
-
-local jump_vel = -6
-local max_fall = 8
-local weight = 1
-local vel_x = 2
-
--- var
-
-
--- temp debug
-local b_pos 
-
-function player_reset_var()
+player = {
+	states = {jump=1,build=2,switch=3},
+	jump_vel = -6,
+ max_fall = 8,
+ weight = 1,
+ pos = {},
+	sprt = 1,
+	state = nil,
+	vel_x = 2,
+	vel_y = 0,
+	-- build
+	b_pos = vector2.new(64,64),
+	switch_time = 2,
 	
-	-- temp debug
-	b_pos = vector2.new(64,64)
-end
-
-function player.new(pos,sprt)
-	player_reset_var()
-	return setmetatable(
-								{pos=pos,
-								sprt=sprt,
-								state=states.jump,
-								vel_x=vel_x,
-								vel_y=0},
-								player)
-end
-
-function player:update()
-	if self.state == states.jump then
-		self:handle_input()
-		--self:clamp()
-		self:check_collisions()
-		self:apply_gravity()
-		self:update_anim()
-	elseif self.state == states.build then
-		self:build_mode()
-	end
-end
-
-function player:update_anim()
-
-end
-
-function player:handle_input()
-	-- use functions instead of enum
-	if btnp(❎) then
-		self.state = states.build end
-
-	local o_pos = self.pos:clone()
-	local x = self.pos.x
-	local y = self.pos.y
+	new = function(self,tbl)
+		tbl = tbl or {}
+		setmetatable(tbl,{__index=self})
+		tbl.state = tbl.state or self.states.jump
+		return tbl
+	end,
 	
-	if btnp(🅾️) then
-		self.vel_y = jump_vel end
-	y += self.vel_y
-	y = min(120,max(0,y))
-	self:move(vector2.new(x,y))
-	while y~=o_pos.y and 
-							(collide_spr(self.pos,0) or 
-							self:collide_blocks()) do
-		if y < o_pos.y then
-			y += 1
-		elseif y > o_pos.y then
-			y -= 1
+	update = function(self)
+		-- edit with func assignments!
+		if self.state == self.states.jump then
+			self:handle_input()
+			self:check_collisions()
+			self:apply_gravity()
+			self:update_anim()
+		elseif self.state == self.states.build then
+			self:build_mode()
 		end
-		self:move(vector2.new(x,y))
-	end
+	end,
 	
-	if btn(⬅️) then
-		x -= self.vel_x end
-	if btn(➡️) then
-		x += self.vel_x end
-	x = min(120,max(0,x))
-	self:move(vector2.new(x,y))
-	while x~=o_pos.x and 
-							(collide_spr(self.pos,0) or 
-							self:collide_blocks()) do
-		if x < o_pos.x then
-			x += 1
-		elseif x > o_pos.x then
-			x -= 1
-		end
-		self:move(vector2.new(x,y))
-	end		
-end
-
-function player:build_mode()
-	if btnp(❎) then
-		self.state = states.jump end
+	update_anim = function(self)
+		-- todo
+	end,
+	
+	handle_input = function(self)
+		-- use functions instead of enum
+		if btnp(❎) then
+			self.state = self.states.build end
+	
+		local o_pos = self.pos:clone()
+		local x = self.pos.x
+		local y = self.pos.y
 		
-	if btnp(➡️) then
-		b_pos.x += 8 end
-	if btnp(⬅️) then
-		b_pos.x -= 8 end
-	if btnp(⬆️) then
-		b_pos.y -= 8 end
-	if btnp(⬇️) then
-		b_pos.y += 8 end
-	b_pos.x = max(0,min(120,b_pos.x))
-	b_pos.y = max(0,min(120,b_pos.y))
-	if btnp(🅾️) then
-		bm:toggle_block(b_pos) end
-end
-
-function player:move(pos)
-	self.pos = pos:clone()
-end
-
-function player:clamp()
-	local o_pos = self.pos:clone()
-	-- temp
-	o_pos.x = min(120,max(0,o_pos.x))
-	o_pos.y = min(120,max(0,o_pos.y))
-	self:move(o_pos)
-end
-
-function player:check_collisions()
+		if btnp(🅾️) then
+			self.vel_y = self.jump_vel end
+		y += self.vel_y
+		y = min(120,max(0,y))
+		self:move(vector2.new(x,y))
+		while y~=o_pos.y and 
+								(collide_spr(self.pos,0) or 
+								self:collide_blocks()) do
+			if y < o_pos.y then
+				y += 1
+			elseif y > o_pos.y then
+				y -= 1
+			end
+			self:move(vector2.new(x,y))
+		end
+		
+		if btn(⬅️) then
+			x -= self.vel_x end
+		if btn(➡️) then
+			x += self.vel_x end
+		x = min(120,max(0,x))
+		self:move(vector2.new(x,y))
+		while x~=o_pos.x and 
+							(collide_spr(self.pos,0) or 
+							self:collide_blocks()) do
+			if x < o_pos.x then
+				x += 1
+			elseif x > o_pos.x then
+				x -= 1
+			end
+			self:move(vector2.new(x,y))
+		end		
+	end,
 	
-end
-
-function player:collide_blocks()
-	for k,v in pairs(bm.blocks) do
-		if v.active and collide_rect(self.pos.x,self.pos.y,8,8,v.pos.x,v.pos.y,8,8) then
-			return true end
+	build_mode = function(self)
+		if btnp(❎) then
+			self.state = self.states.jump end
+			
+		if btnp(➡️) then
+			self.b_pos.x += 8 end
+		if btnp(⬅️) then
+			self.b_pos.x -= 8 end
+		if btnp(⬆️) then
+			self.b_pos.y -= 8 end
+		if btnp(⬇️) then
+			self.b_pos.y += 8 end
+		self.b_pos.x = max(0,min(120,self.b_pos.x))
+		self.b_pos.y = max(0,min(120,self.b_pos.y))
+		if btnp(🅾️) then
+			bm:toggle_block(self.b_pos) end
+	end,
+	
+	move = function(self,pos)
+		-- improve and remove!
+		self.pos = pos:clone()
+	end,
+	
+	check_collisions = function(self)
+		-- todo
+	end,
+	
+	collide_blocks = function(self)
+		for k,v in pairs(bm.blocks) do
+			if v.active and collide_rect(self.pos.x,self.pos.y,8,8,v.pos.x,v.pos.y,8,8) then
+				return true end
+		end
+		return false
+	end,
+	
+	apply_gravity = function(self)
+		self.vel_y = min(self.max_fall,self.vel_y+g*self.weight)
+	end,
+	
+	draw = function(self)
+		print(self.vel_y,100,100,7)
+		spr(self.sprt,self.pos.x,self.pos.y)
+		print(self:collide_blocks(),100,110,7)
+		if self.state == self.states.build then
+			rect(self.b_pos.x,self.b_pos.y,self.b_pos.x+7,self.b_pos.y+7,7)
+		end
 	end
-	return false
-end
+}
 
-function player:apply_gravity()
-	self.vel_y = min(max_fall,self.vel_y+g*weight)
-end
 
-function player:draw()
-	print(self.vel_y,100,100,7)
-	spr(self.sprt,self.pos.x,self.pos.y)
-	print(self:collide_blocks(),100,110,7)
-	if self.state == states.build then
-		rect(b_pos.x,b_pos.y,b_pos.x+7,b_pos.y+7,7)
-	end
-end
+
+
+
+
 
 -->8
 -- blocks --
