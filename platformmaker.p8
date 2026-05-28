@@ -60,11 +60,10 @@ function _init()
 
 	bm = blocks_mng:new()
 	
-	bm:add_blocks(block_types.b_glass,1000)
+	--bm:add_blocks(block_types.b_glass,1000)
 	bm:add_blocks(block_types.b_switch,10)
 	bm:add_blocks(block_types.b_slime,3)
 	bm:add_blocks(block_types.b_normal,5)
-	bm:add_blocks(block_types.b_normal,2)
 end
 
 function update_menu()
@@ -163,9 +162,11 @@ function collide_circle(x1,y1,r1,x2,y2,r2)
 	return dist_sq < radius_sum*radius_sum
 end
 
-function collide_spr(pos,f)
+-- w,h should be 7,7 for 
+--normal 8x8 sprites
+function collide_spr(pos,w,h,f)
 	local tl = pos:clone()
-	local br = pos:clone()+vector2.new(7,7)
+	local br = pos:clone()+vector2.new(w,h)
 
 	local tx1 = flr(tl.x/8)
 	local ty1 = flr(tl.y/8)
@@ -263,40 +264,36 @@ player = {
 			self.state = self.states.build end
 	
 		local o_pos = self.pos:clone()
-		local x = self.pos.x
-		local y = self.pos.y
 		
-		if btnp(🅾️) then
+		if btnp(🅾️) and self:can_jump() then
 			self.vel_y = self.jump_vel end
-		y += self.vel_y
-		y = min(120,max(0,y))
-		self:move(vector2.new(x,y))
-		while y~=o_pos.y and 
-								(collide_spr(self.pos,0) or 
+		self.pos.y += self.vel_y
+		
+		self.pos.y = max(0,self.pos.y)
+		while self.pos.y~=o_pos.y and 
+								(collide_spr(self.pos,7,7,0) or 
 								self:collide_blocks()) do
-			if y < o_pos.y then
-				y += 1
-			elseif y > o_pos.y then
-				y -= 1
+			if self.pos.y < o_pos.y then
+				self.pos.y += 1
+			elseif self.pos.y > o_pos.y then
+				self.pos.y -= 1
 			end
-			self:move(vector2.new(x,y))
 		end
 		
 		if btn(⬅️) then
-			x -= self.vel_x end
+			self.pos.x -= self.vel_x end
 		if btn(➡️) then
-			x += self.vel_x end
-		x = min(120,max(0,x))
-		self:move(vector2.new(x,y))
-		while x~=o_pos.x and 
-							(collide_spr(self.pos,0) or 
+			self.pos.x += self.vel_x end
+		
+		self.pos.x = min(120,max(0,self.pos.x))
+		while self.pos.x~=o_pos.x and 
+							(collide_spr(self.pos,7,7,0) or 
 							self:collide_blocks()) do
-			if x < o_pos.x then
-				x += 1
-			elseif x > o_pos.x then
-				x -= 1
+			if self.pos.x < o_pos.x then
+				self.pos.x += 1
+			elseif self.pos.x > o_pos.x then
+				self.pos.x -= 1
 			end
-			self:move(vector2.new(x,y))
 		end		
 	end,
 	
@@ -337,6 +334,8 @@ player = {
 	
 	apply_gravity = function(self)
 		self.vel_y = min(self.max_fall,self.vel_y+g*self.weight)
+		if self:on_ground() then
+			self.vel_y = 0 end
 	end,
 	
 	draw = function(self)
@@ -346,7 +345,24 @@ player = {
 		if self.state == self.states.build then
 			rect(self.b_pos.x,self.b_pos.y,self.b_pos.x+7,self.b_pos.y+7,7)
 		end
-	end
+	end,
+	
+	can_jump = function(self)
+		-- temp
+		if self:on_ground() then
+			return true end
+		-- coyote jump
+		-- buffer
+		-- ...
+		return false
+	end,
+	
+	on_ground = function(self)
+		if collide_spr(vector2.new(self.pos.x,self.pos.y+8),7,0.1,0) then
+			return true end
+		return false
+	end,
+
 }
 
 
@@ -451,7 +467,9 @@ b_switch = block:new({
 					self.active = self.in_active
 				end
 			end
-		elseif self.in_active and not collide_rect(self.pos.x,self.pos.y,8,8,p.pos.x,p.pos.y,8,8) then
+		elseif self.in_active and 
+									not collide_rect(self.pos.x,self.pos.y,8,8,p.pos.x,p.pos.y,8,8) and
+									self.placed then
 			self.active = self.in_active
 		end
 	end,
@@ -465,7 +483,7 @@ b_switch = block:new({
 				s = self.sprt.off
 			end
 			spr(s,self.pos.x,self.pos.y) end
-	end
+	end,
 })
 
 b_glass = block:new({
@@ -499,8 +517,6 @@ b_glass = block:new({
 		if self.placed and self.active then
 			spr(self.sprt_act,self.pos.x,self.pos.y) end
 	end,
-	
-	
 })
 -->8
 -- blocks manager --
@@ -711,4 +727,4 @@ __map__
 0000004040400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000040404040400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+4040404040400000404040400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
