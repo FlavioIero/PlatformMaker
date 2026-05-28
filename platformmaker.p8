@@ -244,13 +244,13 @@ player = {
 	
 	update = function(self)
 		-- edit with func assignments!
-		if self.state == self.states.jump then
+		if self.state == self.states.build then
+			self:build_mode()
+		elseif self.state == self.states.jump then
 			self:handle_input()
 			self:check_collisions()
 			self:apply_gravity()
 			self:update_anim()
-		elseif self.state == self.states.build then
-			self:build_mode()
 		end
 	end,
 	
@@ -272,7 +272,7 @@ player = {
 		self.pos.y = max(0,self.pos.y)
 		while self.pos.y~=o_pos.y and 
 								(collide_spr(self.pos,7,7,0) or 
-								self:collide_blocks()) do
+								self:collide_blocks(self.pos.x,self.pos.y,8,8)) do
 			if self.pos.y < o_pos.y then
 				self.pos.y += 1
 			elseif self.pos.y > o_pos.y then
@@ -288,7 +288,7 @@ player = {
 		self.pos.x = min(120,max(0,self.pos.x))
 		while self.pos.x~=o_pos.x and 
 							(collide_spr(self.pos,7,7,0) or 
-							self:collide_blocks()) do
+							self:collide_blocks(self.pos.x,self.pos.y,8,8)) do
 			if self.pos.x < o_pos.x then
 				self.pos.x += 1
 			elseif self.pos.x > o_pos.x then
@@ -324,9 +324,9 @@ player = {
 		-- todo
 	end,
 	
-	collide_blocks = function(self)
+	collide_blocks = function(self,x,y,w,h)
 		for k,v in pairs(bm.blocks) do
-			if v.active and collide_rect(self.pos.x,self.pos.y,8,8,v.pos.x,v.pos.y,8,8) then
+			if v.active and collide_rect(x,y,w,h,v.pos.x,v.pos.y,8,8) then
 				return true end
 		end
 		return false
@@ -341,7 +341,7 @@ player = {
 	draw = function(self)
 		print(self.vel_y,100,100,7)
 		spr(self.sprt,self.pos.x,self.pos.y)
-		print(self:collide_blocks(),100,110,7)
+		print(self:collide_blocks(self.pos.x,self.pos.y,8,8),100,110,7)
 		if self.state == self.states.build then
 			rect(self.b_pos.x,self.b_pos.y,self.b_pos.x+7,self.b_pos.y+7,7)
 		end
@@ -358,7 +358,8 @@ player = {
 	end,
 	
 	on_ground = function(self)
-		if collide_spr(vector2.new(self.pos.x,self.pos.y+8),7,0.1,0) then
+		if collide_spr(vector2.new(self.pos.x,self.pos.y+8),7,0.1,0) 
+					or self:collide_blocks(self.pos.x,self.pos.y+8,8,0.1) then
 			return true end
 		return false
 	end,
