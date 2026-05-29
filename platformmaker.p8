@@ -60,10 +60,11 @@ function _init()
 
 	bm = blocks_mng:new()
 	
+	bm:add_blocks(block_types.b_normal,1000)
 	--bm:add_blocks(block_types.b_glass,1000)
 	bm:add_blocks(block_types.b_switch,10)
 	bm:add_blocks(block_types.b_slime,3)
-	bm:add_blocks(block_types.b_normal,5)
+	
 end
 
 function update_menu()
@@ -190,8 +191,11 @@ player = {
  y = 0,
 	sprt = 1,
 	state = nil,
-	vel_x = 2,
+	vel_x = 0,
 	vel_y = 0,
+	max_vel_x = 5,
+	accel = 0.5,
+	decel = 0.3,
 	-- build
 	bx = 64,
 	by = 64,
@@ -211,6 +215,7 @@ player = {
 		elseif self.state == self.states.jump then
 			self:handle_input()
 			self:check_collisions()
+			self:decelerate()
 			self:apply_gravity()
 			self:update_anim()
 		end
@@ -230,12 +235,11 @@ player = {
 		
 		if btnp(🅾️) and self:can_jump() then
 			self.vel_y = self.jump_vel end
-		self.y += self.vel_y
 		
-		self.y = max(0,self.y)
+		self.y = max(0,self.y+self.vel_y)
 		while self.y~=ly and 
-								(collide_spr(self.x,self.y,7,7,0) or 
-								self:collide_blocks(self.x,self.y,8,8)) do
+								(collide_spr(self.x,self.y,7,7,0)
+								or self:collide_blocks(self.x,self.y,8,8)) do
 			if self.y < ly then
 				self.y += 1
 			elseif self.y > ly then
@@ -243,21 +247,41 @@ player = {
 			end
 		end
 		
-		if btn(⬅️) then
-			self.x -= self.vel_x end
 		if btn(➡️) then
-			self.x += self.vel_x end
+			self.vel_x = min(self.max_vel_x,self.vel_x+self.accel)
+		end
+		if btn(⬅️) then
+			self.vel_x = max(-self.max_vel_x,self.vel_x-self.accel)
+		end
 		
-		self.x = min(120,max(0,self.x))
+		self.x = min(120,max(0,self.x+self.vel_x))
+		local b_coll = self:collide_blocks(self.x,self.y,8,8)
 		while self.x~=lx and 
-							(collide_spr(self.x,self.y,7,7,0) or 
-							self:collide_blocks(self.x,self.y,8,8)) do
-			if self.x < lx then
-				self.x += 1
-			elseif self.x > lx then
-				self.x -= 1
+								(collide_spr(self.x,self.y,7,7,0) 
+								or b_coll) do
+			if b_coll then
+				if b_coll.x < self.x then
+					self.x = b_coll.x+8
+				elseif b_coll.x > self.x then
+					self.x = b_coll.x-8
+				end
+			else
+				if self.x < lx then
+					self.x += 1
+				else
+					self.x -= 1
+				end
 			end
-		end		
+			b_coll = self:collide_blocks(self.x,self.y,8,8)
+		end
+	end,
+	
+	decelerate = function(self)
+		if self.vel_x > 0 then
+			self.vel_x = max(0,self.vel_x-self.decel)
+		elseif self.vel_x < 0 then
+			self.vel_x = min(0,self.vel_x+self.decel)
+		end
 	end,
 	
 	build_mode = function(self)
@@ -285,7 +309,7 @@ player = {
 	collide_blocks = function(self,x,y,w,h)
 		for k,v in pairs(bm.blocks) do
 			if v.active and collide_rect(x,y,w,h,v.x,v.y,8,8) then
-				return true end
+				return {x=v.x,y=v.y} end
 		end
 		return false
 	end,
@@ -297,12 +321,13 @@ player = {
 	end,
 	
 	draw = function(self)
-		print(self.vel_y,100,100,7)
 		spr(self.sprt,self.x,self.y)
-		print(self:collide_blocks(self.x,self.y,8,8),100,110,7)
 		if self.state == self.states.build then
 			rect(self.bx,self.by,self.bx+7,self.by+7,10)
 		end
+		-- debug
+		print(self:collide_blocks(self.x,self.y,8,8),100,110,7)
+		print("velx: "..self.vel_x,75,100,10)
 	end,
 	
 	can_jump = function(self)
@@ -686,4 +711,4 @@ __map__
 0000004040400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-4040404040400000404040400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+4040404040404040404040404040404000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
