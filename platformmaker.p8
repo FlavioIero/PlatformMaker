@@ -31,8 +31,8 @@ g_frm = 0
 
 function reset_var()
 	-- var
-	p_sp = vector2.new(20,110)
-	p = player:new({pos=p_sp,sprt=1})
+	p_sp = {x=20,y=110}
+	p = player:new({x=p_sp.x,y=p_sp.y,sprt=1})
 	-- menu
 	m_frm = 0
 	m_p_sprt_i = 1
@@ -97,8 +97,6 @@ function draw_menu()
 	print_ctr_w("🅾️ to select a character",90,7)
 end
 
--- temp
-
 function update_game()
 	g_frm += 1
 	p:update()
@@ -154,6 +152,7 @@ function collide_rect(ax, ay, aw, ah, bx, by, bw, bh)
         ay + ah > by
 end
 
+-- x and y are center of circles
 function collide_circle(x1,y1,r1,x2,y2,r2)
 	local dx = x2-x1
 	local dy = y2-y1
@@ -163,10 +162,10 @@ function collide_circle(x1,y1,r1,x2,y2,r2)
 end
 
 -- w,h should be 7,7 for 
---normal 8x8 sprites
-function collide_spr(pos,w,h,f)
-	local tl = pos:clone()
-	local br = pos:clone()+vector2.new(w,h)
+-- normal 8x8 sprites
+function collide_spr(x,y,w,h,f)
+	local tl = {x=x,y=y}
+	local br = {x=x+w,y=y+h}
 
 	local tx1 = flr(tl.x/8)
 	local ty1 = flr(tl.y/8)
@@ -180,45 +179,6 @@ function collide_spr(pos,w,h,f)
 								fget(mget(tx2,ty2),f)
 end
 -->8
--- vector2 --
-
-vector2 = {}
-vector2.__index = vector2
-
-function vector2.new(x,y)
-	return setmetatable({x=x,y=y},vector2)
-end
-
-function vector2.__tostring(v)
-	return "("..v.x..", "..v.y..")"
-end 
-
-function vector2.__eq(v1,v2)
-	return v1.x == v2.x and v1.y == v2.y
-end
-
-function vector2.__add(v1,v2)
-	return vector2.new(v1.x+v2.x,v1.y+v2.y)
-end
-
-function vector2.__mul(v1,v2)
-	return vector2.new(v1.x*v2.x,v1.y*v2.y)
-end
-
-function vector2:clone()
-	return vector2.new(self.x,self.y)
-end
-
-function vector2:dist(v)
-	dx = abs(self.x-v.x)
-	dy = abs(self.y-v.y)
-	ma = max(dx,dy)
-	mi = min(dx,dy)
-	if ma == 0 then return 0 end
-	return ma*sqrt(1+(mi/ma)*(mi/ma))
-end
-
--->8
 -- player --
 
 player = {
@@ -226,13 +186,15 @@ player = {
 	jump_vel = -6,
  max_fall = 8,
  weight = 1,
- pos = {},
+ x = 0,
+ y = 0,
 	sprt = 1,
 	state = nil,
 	vel_x = 2,
 	vel_y = 0,
 	-- build
-	b_pos = vector2.new(64,64),
+	bx = 64,
+	by = 64,
 	switch_time = 2,
 	
 	new = function(self,tbl)
@@ -263,36 +225,37 @@ player = {
 		if btnp(❎) then
 			self.state = self.states.build end
 	
-		local o_pos = self.pos:clone()
+		local lx = self.x
+		local ly = self.y
 		
 		if btnp(🅾️) and self:can_jump() then
 			self.vel_y = self.jump_vel end
-		self.pos.y += self.vel_y
+		self.y += self.vel_y
 		
-		self.pos.y = max(0,self.pos.y)
-		while self.pos.y~=o_pos.y and 
-								(collide_spr(self.pos,7,7,0) or 
-								self:collide_blocks(self.pos.x,self.pos.y,8,8)) do
-			if self.pos.y < o_pos.y then
-				self.pos.y += 1
-			elseif self.pos.y > o_pos.y then
-				self.pos.y -= 1
+		self.y = max(0,self.y)
+		while self.y~=ly and 
+								(collide_spr(self.x,self.y,7,7,0) or 
+								self:collide_blocks(self.x,self.y,8,8)) do
+			if self.y < ly then
+				self.y += 1
+			elseif self.y > ly then
+				self.y -= 1
 			end
 		end
 		
 		if btn(⬅️) then
-			self.pos.x -= self.vel_x end
+			self.x -= self.vel_x end
 		if btn(➡️) then
-			self.pos.x += self.vel_x end
+			self.x += self.vel_x end
 		
-		self.pos.x = min(120,max(0,self.pos.x))
-		while self.pos.x~=o_pos.x and 
-							(collide_spr(self.pos,7,7,0) or 
-							self:collide_blocks(self.pos.x,self.pos.y,8,8)) do
-			if self.pos.x < o_pos.x then
-				self.pos.x += 1
-			elseif self.pos.x > o_pos.x then
-				self.pos.x -= 1
+		self.x = min(120,max(0,self.x))
+		while self.x~=lx and 
+							(collide_spr(self.x,self.y,7,7,0) or 
+							self:collide_blocks(self.x,self.y,8,8)) do
+			if self.x < lx then
+				self.x += 1
+			elseif self.x > lx then
+				self.x -= 1
 			end
 		end		
 	end,
@@ -302,22 +265,17 @@ player = {
 			self.state = self.states.jump end
 			
 		if btnp(➡️) then
-			self.b_pos.x += 8 end
+			self.bx += 8 end
 		if btnp(⬅️) then
-			self.b_pos.x -= 8 end
+			self.bx -= 8 end
 		if btnp(⬆️) then
-			self.b_pos.y -= 8 end
+			self.by -= 8 end
 		if btnp(⬇️) then
-			self.b_pos.y += 8 end
-		self.b_pos.x = max(0,min(120,self.b_pos.x))
-		self.b_pos.y = max(0,min(120,self.b_pos.y))
+			self.by += 8 end
+		self.bx = max(0,min(120,self.bx))
+		self.by = max(0,min(120,self.by))
 		if btnp(🅾️) then
-			bm:toggle_block(self.b_pos) end
-	end,
-	
-	move = function(self,pos)
-		-- improve and remove!
-		self.pos = pos:clone()
+			bm:toggle_block(self.bx,self.by) end
 	end,
 	
 	check_collisions = function(self)
@@ -326,7 +284,7 @@ player = {
 	
 	collide_blocks = function(self,x,y,w,h)
 		for k,v in pairs(bm.blocks) do
-			if v.active and collide_rect(x,y,w,h,v.pos.x,v.pos.y,8,8) then
+			if v.active and collide_rect(x,y,w,h,v.x,v.y,8,8) then
 				return true end
 		end
 		return false
@@ -340,10 +298,10 @@ player = {
 	
 	draw = function(self)
 		print(self.vel_y,100,100,7)
-		spr(self.sprt,self.pos.x,self.pos.y)
-		print(self:collide_blocks(self.pos.x,self.pos.y,8,8),100,110,7)
+		spr(self.sprt,self.x,self.y)
+		print(self:collide_blocks(self.x,self.y,8,8),100,110,7)
 		if self.state == self.states.build then
-			rect(self.b_pos.x,self.b_pos.y,self.b_pos.x+7,self.b_pos.y+7,7)
+			rect(self.bx,self.by,self.bx+7,self.by+7,10)
 		end
 	end,
 	
@@ -358,10 +316,8 @@ player = {
 	end,
 	
 	on_ground = function(self)
-		if collide_spr(vector2.new(self.pos.x,self.pos.y+8),7,0.1,0) 
-					or self:collide_blocks(self.pos.x,self.pos.y+8,8,0.1) then
-			return true end
-		return false
+		return collide_spr(self.x,self.y+8,7,0.1,0) 
+					or self:collide_blocks(self.x,self.y+8,8,0.1)
 	end,
 
 }
@@ -385,7 +341,8 @@ block = {
 	sprt_ui = 128,
 	sprt = 129,
 	
-	pos = vector2.new(0,0),
+	x = 0,
+	y = 0,
 	placed = false,
 	active = false,
 	
@@ -409,11 +366,12 @@ block = {
 	
 	draw = function(self)
 		if self.placed then
-			spr(self.sprt,self.pos.x,self.pos.y) end
+			spr(self.sprt,self.x,self.y) end
 	end,
 	
-	place = function(self,pos)
-		self.pos = pos:clone()
+	place = function(self,x,y)
+		self.x = x
+		self.y = y
 		self.placed = true
 		self.active = true
 	end,
@@ -421,13 +379,13 @@ block = {
 	remove = function(self)
 		self.placed = false
 		self.active = false
-	end
+	end,
 }
 
 b_normal = block:new({
 	name = "b_normal",
 	sprt_ui = 128,
-	sprt = 129
+	sprt = 129,
 })
 
 b_slime = block:new({
@@ -438,10 +396,10 @@ b_slime = block:new({
 	
 	update = function(self)
 		if self.active and
-					collide_rect(p.pos.x,p.pos.y,8,8,self.pos.x,self.pos.y-0.01,8,2) then
+					collide_rect(p.x,p.y,8,8,self.x,self.y-0.01,8,2) then
 			p.vel_y = self.vel_y
 		end
-	end
+	end,
 })
 
 -- if more colors are added
@@ -464,13 +422,13 @@ b_switch = block:new({
 			if self.placed then
 				if not self.in_active then
 					self.active = self.in_active 
-				elseif not collide_rect(self.pos.x,self.pos.y,8,8,p.pos.x,p.pos.y,8,8) then
+				elseif not collide_rect(self.x,self.y,8,8,p.x,p.y,8,8) then
 					self.active = self.in_active
 				end
 			end
-		elseif self.in_active and 
-									not collide_rect(self.pos.x,self.pos.y,8,8,p.pos.x,p.pos.y,8,8) and
-									self.placed then
+		elseif self.in_active 
+									and not collide_rect(self.x,self.y,8,8,p.x,p.y,8,8)
+									and self.placed then
 			self.active = self.in_active
 		end
 	end,
@@ -483,7 +441,7 @@ b_switch = block:new({
 			else
 				s = self.sprt.off
 			end
-			spr(s,self.pos.x,self.pos.y) end
+			spr(s,self.x,self.y) end
 	end,
 })
 
@@ -504,19 +462,19 @@ b_glass = block:new({
 			elseif self.frm == self.dur then
 				self.active = false
 			end
-		elseif self.frm >= self.dur+self.resp and 
-									not collide_rect(self.pos.x,self.pos.y-0.01,8,2,p.pos.x,p.pos.y,8,8) then
+		elseif self.frm >= self.dur+self.resp 
+									and not collide_rect(self.x,self.y-0.01,8,2,p.x,p.y,8,8) then
 			self.active = true
 			self.frm = 0
 			self.sprt_act = self.sprt[1]
 		end
-		if self.placed and collide_rect(self.pos.x,self.pos.y-0.01,8,2,p.pos.x,p.pos.y,8,8) then
+		if self.placed and collide_rect(self.x,self.y-0.01,8,2,p.x,p.y,8,8) then
 			self.frm = (self.frm>0) and self.frm or 1 end
 	end,
 	
 	draw = function(self)
 		if self.placed and self.active then
-			spr(self.sprt_act,self.pos.x,self.pos.y) end
+			spr(self.sprt_act,self.x,self.y) end
 	end,
 })
 -->8
@@ -574,23 +532,23 @@ blocks_mng = {
 		end
 	end,
 	
-	toggle_block = function(self,pos)
+	toggle_block = function(self,x,y)
 		for b in all(self.blocks) do
-			if b.placed and b.pos == pos then
-				self:remove_block(pos)
+			if b.placed and b.x == x and b.y == y then
+				self:remove_block(x,y)
 				return
 			end
 		end
-		self:try_place_block(pos)
+		self:try_place_block(x,y)
 	end,
 	
-	try_place_block = function(self,pos)
+	try_place_block = function(self,x,y)
 		local placed = false
 		if self.blocks_unplaced[self.selected_i].n > 0 then
 			self.blocks_unplaced[self.selected_i].n -= 1
 			for b in all(self.blocks) do
 				if self:can_place(b) then
-					b:place(pos)
+					b:place(x,y)
 					break
 				end
 			end
@@ -604,12 +562,12 @@ blocks_mng = {
 			b.name == self.blocks_unplaced[self.selected_i].b_type.name
 	end,
 	
-	remove_block = function(self,pos)
+	remove_block = function(self,x,y)
 		-- check for its hp before 
 		-- putting it back in the
 		-- unplaced_blocks table
 		for b in all(self.blocks) do
-			if b.pos == pos then
+			if b.x == x and b.y == y then
 				b:remove()
 				break
 			end
@@ -626,10 +584,10 @@ blocks_mng = {
 	
 	-- returns idx of type in 
 	-- table unplaced_blocks
-	get_type_idx = function(self,block)
+	get_type_idx = function(self,b)
 		local i = 1
 		for t in all(self.unplaced_blocks) do
-			if t.name == block.name then
+			if t.name == b.name then
 				return i end
 			i += 1
 		end
