@@ -62,14 +62,11 @@ function _init()
 
 	bm = blocks_mng:new()
 	
+	bm:add_blocks(block_types.b_normal,1000)
 	bm:add_blocks(block_types.b_switch,10)
 	bm:add_blocks(block_types.b_glass,1000)
 	bm:add_blocks(block_types.b_slime,50)
-	bm:add_blocks(block_types.b_normal,1000)
-	
-	
-	
-	
+
 end
 
 function update_menu()
@@ -192,9 +189,9 @@ player = {
 	jump_vel = -8,
  max_fall = 8,
  weight = 1.4,
- max_vel_x = 5,
-	accel = 4,
-	decel = 3.7, -- decel should be less than accel
+ max_vel_x = 3,
+	accel = 2.7,
+	decel = 1.6, -- decel should be less than accel
 	--------------------
 	states = {jump=1,build=2,switch=3},
  x = 0,
@@ -237,6 +234,7 @@ player = {
 		print(self:collide_blocks(self.x,self.y,8,8),100,110,7)
 		print("velx: "..self.vel_x,75,90,10)
 		print("vely: "..self.vel_y,75,100,10)
+		print(self.x..";"..self.y,2,30,10)
 	end,
 	
 	update_anim = function(self)
@@ -254,6 +252,7 @@ player = {
 		if btnp(🅾️) and self:can_jump() then
 			self.vel_y = self.jump_vel end
 		self.y += self.vel_y
+		self.y = flr(self.y)
 		
 		if self.y > 120 then
 			self.y = 120
@@ -277,6 +276,7 @@ player = {
 			self.vel_x = max(-self.max_vel_x,self.vel_x-self.accel)
 		end
 		self.x += self.vel_x
+		self.x = flr(self.x)
 		
 		if self.x < 0 then
 			self.x = 0
@@ -348,7 +348,9 @@ player = {
 	apply_gravity = function(self)
 		self.vel_y = min(self.max_fall,self.vel_y+g*self.weight)
 		if self:on_ground() then
-			self.vel_y = 0 end
+			self.vel_y = 0 
+			self.y = flr(self.y)
+		end
 	end,
 	
 	can_jump = function(self)
@@ -362,7 +364,7 @@ player = {
 	end,
 	
 	on_ground = function(self)
-		return collide_spr(self.x,self.y+8,7,0.1,0) 
+		return collide_spr(self.x,self.y+8,7,0.000001,0) 
 					or self:collide_blocks(self.x,self.y+8,8,0.1)
 	end,
 
