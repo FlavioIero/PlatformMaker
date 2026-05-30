@@ -48,8 +48,10 @@ function _init()
 	poke(0x5f2e,1)
 	--pal({[0]=0,-15,1,-4,12,13,-1,7,2,-7,-8,8,9,-3,-2,-14},1)	reset_var()
 	reset_var()
-	_update = update_menu
-	_draw = draw_menu
+	--_update = update_menu
+	--_draw = draw_menu
+	_update = update_game
+	_draw = draw_game
 	
 	-- debug
 	block_types = {
@@ -60,10 +62,13 @@ function _init()
 
 	bm = blocks_mng:new()
 	
-	bm:add_blocks(block_types.b_normal,1000)
-	--bm:add_blocks(block_types.b_glass,1000)
 	bm:add_blocks(block_types.b_switch,10)
-	bm:add_blocks(block_types.b_slime,3)
+	bm:add_blocks(block_types.b_glass,1000)
+	bm:add_blocks(block_types.b_slime,50)
+	bm:add_blocks(block_types.b_normal,1000)
+	
+	
+	
 	
 end
 
@@ -183,19 +188,21 @@ end
 -- player --
 
 player = {
-	states = {jump=1,build=2,switch=3},
-	jump_vel = -6,
+	-- vars to change --
+	jump_vel = -8,
  max_fall = 8,
- weight = 1,
+ weight = 1.4,
+ max_vel_x = 5,
+	accel = 4,
+	decel = 3.7, -- decel should be less than accel
+	--------------------
+	states = {jump=1,build=2,switch=3},
  x = 0,
  y = 0,
 	sprt = 1,
 	state = nil,
 	vel_x = 0,
 	vel_y = 0,
-	max_vel_x = 5,
-	accel = 0.5,
-	decel = 0.3,
 	-- build
 	bx = 64,
 	by = 64,
