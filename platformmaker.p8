@@ -208,6 +208,7 @@ player = {
 	lbx = 64,
 	lby = 64,
 	old_click = false,
+	can_toggle = false,
 	-- switch
 	switch_time = 20,
 	switch_curr = 0,
@@ -239,7 +240,7 @@ player = {
 	draw = function(self)
 		spr(self.sprt,self.x,self.y)
 		if self.state == self.states.build then
-			rect(self.bx-self.bx%8,self.by-self.by%8,self.bx-self.bx%8+7,self.by-self.by%8+7,10)
+			rect(self.bx-self.bx%8,self.by-self.by%8,self.bx-self.bx%8+7,self.by-self.by%8+7,self.can_place and 10 or 8)
 			spr(17,self.bx,self.by)
 		end
 		-- debug
@@ -373,13 +374,20 @@ player = {
 		self.by = max(0,min(127,self.by)) 
 		--------
 		
+		-- can place --
+		self.can_place = 
+			not collide_rect(self.bx-self.bx%8,self.by-self.by%8,8,8,self.x,self.y,8,8)
+			and not collide_spr(self.bx-self.bx%8,self.by-self.by%8,7,7,0)
+		
+		---------------
+		
 		local click = stat(34) == 1
-		if not self.old_click and click then
+		if not self.old_click and click and self.can_place then
 			bm:toggle_block(self.bx-self.bx%8,self.by-self.by%8)
 		end
 		self.old_click = click
 		
-		if btnp(🅾️) then
+		if btnp(🅾️) and self.can_place then
 			bm:toggle_block(self.bx-self.bx%8,self.by-self.by%8) end
 	end,
 	
@@ -393,27 +401,6 @@ player = {
 			bm:switch_block(1) end
 		if btnp(⬅️) then
 			bm:switch_block(-1) end
-		
-		
-		
-	end,
-	
-	build_mode_old = function(self)
-		if btnp(❎) then
-			self.state = self.states.jump end
-			
-		if btnp(➡️) then
-			self.bx += 8 end
-		if btnp(⬅️) then
-			self.bx -= 8 end
-		if btnp(⬆️) then
-			self.by -= 8 end
-		if btnp(⬇️) then
-			self.by += 8 end
-		self.bx = max(0,min(120,self.bx))
-		self.by = max(0,min(120,self.by))
-		if btnp(🅾️) then
-			bm:toggle_block(self.bx,self.by) end
 	end,
 	
 	check_collisions = function(self)
