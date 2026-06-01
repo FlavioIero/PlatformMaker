@@ -202,13 +202,16 @@ player = {
 	vel_x = 0,
 	vel_y = 0,
 	-- build
-	switch_time = 20,
 	ptr_spd = 4,
 	bx = 64,
 	by = 64,
 	lbx = 64,
 	lby = 64,
 	old_click = false,
+	-- switch
+	switch_time = 20,
+	switch_curr = 0,
+	switch_pressed = false,
 	
 	
 	new = function(self,tbl)
@@ -228,6 +231,8 @@ player = {
 			self:decelerate()
 			self:apply_gravity()
 			self:update_anim()
+		elseif self.state == self.states.switch then
+			self:switch_mode()
 		end
 	end,
 	
@@ -244,6 +249,8 @@ player = {
 		print(self.x..";"..self.y,2,30,10)
 		print(self.bx..";"..self.by,2,38,12)
 		print(stat(32)..";"..stat(33),2,46,12)
+		print(self.debug,0,100,9)
+		print(self.switch_curr,0,108,9)
 	end,
 	
 	update_anim = function(self)
@@ -325,8 +332,23 @@ player = {
 	end,
 	
 	build_mode = function(self)
-		if btnp(❎) then
-			self.state = self.states.jump end
+		self.switch_pressed = false
+		if btnp(❎) and self.switch_curr == 0 then
+			--self.state = self.states.jump 
+			self.switch_curr = 1
+			self.switch_pressed = true
+		elseif btn(❎) and self.switch_curr > 0 then
+			self.switch_curr += 1
+			self.switch_pressed = true
+		end
+		if not self.switch_pressed then
+			if self.switch_curr > self.switch_time then
+				self.state = self.states.switch
+			elseif self.switch_curr > 0 then
+				self.state = self.states.jump
+			end
+			self.switch_curr = 0
+		end
 		
 		-- movement of pointer
 		if flr(stat(32)) ~= self.lbx then
@@ -359,6 +381,21 @@ player = {
 		
 		if btnp(🅾️) then
 			bm:toggle_block(self.bx-self.bx%8,self.by-self.by%8) end
+	end,
+	
+	debug = "no",
+	switch_mode = function(self) 
+		self.debug = "yes"
+		if btnp(❎) then
+			self.state = self.states.build end
+		
+		if btnp(➡️) then 
+			bm:switch_block(1) end
+		if btnp(⬅️) then
+			bm:switch_block(-1) end
+		
+		
+		
 	end,
 	
 	build_mode_old = function(self)
@@ -571,6 +608,14 @@ blocks_mng = {
 	blocks_unplaced = {},
 	blocks = {},
 	selected_i = 1,
+	-- switch vars
+	switch_arr_time = 3,
+	arr_vel_y = 1.5,
+	arr_max_y = 3,
+	sprt_arr = 18,
+	switch_frm = 0,
+	arr_dir = 1,
+	arr_y = 0,
 	
 	new = function(self)
 		local tbl = {}
@@ -599,11 +644,38 @@ blocks_mng = {
 		local lmarg = 25
 		local pad = 10
 		local i = 0
+		local ui_b_pos = {}
 		for k,v in pairs(self.blocks_unplaced) do
-			print("x "..v.n,2+lmarg*i+pad*i,3,7)
-			spr(v.b_type.sprt_ui,12+lmarg*i+pad*i+3,2)
+			if i+1 ~= self.selected_i then
+				print(v.n,2+lmarg*i+pad*i,3,7)
+			else
+				print(v.n,2+lmarg*i+pad*i,3,10)
+			end
+			local s = ""..v.n
+			spr(v.b_type.sprt_ui,2+lmarg*i+pad*i+#s*4,2)
+			ui_b_pos[i+1] = {x=2+lmarg*i+pad*i+#s*4,y=2}
 			i += 1
 		end
+		
+		-- switch mode
+		if p.state == p.states.switch then
+			self:draw_switch_mode(ui_b_pos)
+		end
+	end,
+	
+	draw_switch_mode = function(self,ui_b_pos)
+		self.switch_frm += 1
+			if self.switch_frm%self.switch_arr_time == 0 then
+				self.arr_y += self.arr_vel_y*self.arr_dir
+				if self.arr_y+(self.arr_vel_y*self.arr_dir) > self.arr_max_y then
+					self.arr_y = self.arr_max_y
+					self.arr_dir *= -1
+				elseif self.arr_y+(self.arr_vel_y*self.arr_dir) < 0 then
+					self.arr_y = 0
+					self.arr_dir *= -1
+				end
+			end
+			spr(self.sprt_arr,ui_b_pos[self.selected_i].x,ui_b_pos[self.selected_i].y+self.arr_y+8)
 	end,
 	
 	add_blocks = function(self,b_type,n)
@@ -663,9 +735,9 @@ blocks_mng = {
 	
 	switch_block = function(self,dir)
 		if dir == 1 then
-			self.selected_i = self.selected_i%#self.unplaced_blocks+1
+			self.selected_i = self.selected_i%#self.blocks_unplaced+1
 		elseif dir == -1 then
-			self.selected_i = (self.selected_i-2)%#self.unplaced_blocks+1
+			self.selected_i = (self.selected_i-2)%#self.blocks_unplaced+1
 		end
 	end,
 	
@@ -691,13 +763,13 @@ __gfx__
 00000000188888881bbbbbbb1ccccccc8188888801888880b1bbbbbb01bbbbb0c1cccccc01ccccc01eeeeeeee1eeeeee01eeeee0000000000000000000000000
 0000000088888888bbbbbbbbcccccccc18888888088888801bbbbbbb0bbbbbb01ccccccc0cccccc0eeeeeeee1eeeeeee0eeeeee0000000000000000000000000
 00000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000171000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000177100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000177710000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000177771000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000177110000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000011710000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000171000000001100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000177100000018810000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000177710000189981000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000177771000199661000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000177110001899988100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000011710001889988100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000111111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
