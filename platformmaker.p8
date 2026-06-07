@@ -198,7 +198,8 @@ player = {
  weight = 1.4,
  max_vel_x = 3,
 	accel = 2.7,
-	decel = 1.6, -- decel should be less than accel
+	ground_fric = 1.6, -- should be less than accel
+	air_fric = 0.2,
 	--------------------
 	states = {jump=1,build=2,switch=3},
  x = 0,
@@ -235,7 +236,7 @@ player = {
 		elseif self.state == self.states.jump then
 			self:handle_input()
 			self:check_collisions()
-			self:decelerate()
+			self:apply_friction()
 			self:apply_gravity()
 			self:update_anim()
 		elseif self.state == self.states.switch then
@@ -315,7 +316,7 @@ player = {
 		while self.x~=lx and 
 								(collide_spr(self.x,self.y,7,7,0) 
 								or b_coll) do
-			if b_coll then
+			if b_coll then	
 				if b_coll.x < self.x then
 					self.x = b_coll.x+8
 					moved = true
@@ -337,11 +338,20 @@ player = {
 		end
 	end,
 	
-	decelerate = function(self)
-		if self.vel_x > 0 then
-			self.vel_x = max(0,self.vel_x-self.decel)
-		elseif self.vel_x < 0 then
-			self.vel_x = min(0,self.vel_x+self.decel)
+	apply_friction = function(self)
+		local grounded = self:on_ground()
+		if grounded then
+			if self.vel_x > 0 then
+				self.vel_x = max(0,self.vel_x-self.ground_fric)
+			elseif self.vel_x < 0 then
+				self.vel_x = min(0,self.vel_x+self.ground_fric)
+			end
+		else
+			if self.vel_x > 0 then
+				self.vel_x = max(0,self.vel_x-self.air_fric)
+			elseif self.vel_x < 0 then
+				self.vel_x = min(0,self.vel_x+self.air_fric)
+			end
 		end
 	end,
 	
