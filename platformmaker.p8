@@ -32,7 +32,7 @@ g_frm = 0
 
 function reset_var()
 	-- var
-	p_sp = {x=20,y=110}
+	p_sp = {x=88,y=72}
 	p = player:new({x=p_sp.x,y=p_sp.y,sprt=1})
 	-- menu
 	m_frm = 0
@@ -65,9 +65,9 @@ function _init()
 
 	bm = blocks_mng:new()
 	
+	bm:add_blocks(block_types.b_normal,200)
 	bm:add_blocks(block_types.b_tnt,500)
 	bm:add_blocks(block_types.b_slime,200)
-	bm:add_blocks(block_types.b_normal,200)
 	bm:add_blocks(block_types.b_switch,200)
 	bm:add_blocks(block_types.b_glass,200)
 	
@@ -199,7 +199,9 @@ player = {
  max_vel_x = 3,
 	accel = 2.7,
 	ground_fric = 1.6, -- should be less than accel
-	air_fric = 0.2,
+	air_fric = 0.45,
+	jump_buff_time = 5,
+	coyote_time = 3,
 	--------------------
 	states = {jump=1,build=2,switch=3},
  x = 0,
@@ -208,6 +210,10 @@ player = {
 	state = nil,
 	vel_x = 0,
 	vel_y = 0,
+	grounded = false,
+	jump_buff_curr = 0,
+	jumped = false,
+	coyote_curr = 0,
 	-- build
 	ptr_spd = 4,
 	bx = 64,
@@ -217,7 +223,7 @@ player = {
 	old_click = false,
 	can_toggle = false,
 	-- switch
-	switch_time = 20,
+	switch_time = 7,
 	switch_curr = 0,
 	switch_pressed = false,
 	
@@ -257,7 +263,7 @@ player = {
 		print(self.x..";"..self.y,2,30,10)
 		print(self.bx..";"..self.by,2,38,12)
 		print(stat(32)..";"..stat(33),2,46,12)
-		print(self.debug,0,100,9)
+		print(self.jumped,0,100,9)
 		print(self.switch_curr,0,108,9)
 	end,
 	
@@ -273,7 +279,7 @@ player = {
 		local lx = self.x
 		local ly = self.y
 		
-		if btnp(🅾️) and self:can_jump() then
+		if self:can_jump() then
 			self.vel_y = self.jump_vel end
 		self.y += self.vel_y
 		self.y = flr(self.y)
@@ -292,6 +298,8 @@ player = {
 			end
 			self.vel_y = 0
 		end
+		
+		self.grounded = self:on_ground()
 		
 		if btn(➡️) and self.vel_x < self.max_vel_x then
 			print("inside ➡️",2,60,10)
@@ -339,8 +347,7 @@ player = {
 	end,
 	
 	apply_friction = function(self)
-		local grounded = self:on_ground()
-		if grounded then
+		if self.grounded then
 			if self.vel_x > 0 then
 				self.vel_x = max(0,self.vel_x-self.ground_fric)
 			elseif self.vel_x < 0 then
@@ -414,9 +421,7 @@ player = {
 			bm:toggle_block(self.bx-self.bx%8,self.by-self.by%8) end
 	end,
 	
-	debug = "no",
 	switch_mode = function(self) 
-		self.debug = "yes"
 		if btnp(❎) then
 			self.state = self.states.build end
 		
@@ -441,26 +446,52 @@ player = {
 	end,
 	
 	apply_gravity = function(self)
-		self.vel_y = min(self.max_fall,self.vel_y+g*self.weight)
-		if self:on_ground() then
+		if self.grounded then
 			self.vel_y = 0 
 			self.y = flr(self.y)
+		else
+			self.vel_y = min(self.max_fall,self.vel_y+g*self.weight)
 		end
 	end,
 	
 	can_jump = function(self)
-		-- temp
-		if self:on_ground() then
-			return true end
-		-- coyote jump
-		-- buffer
-		-- ...
+		if self.jump_buff_curr > self.jump_buff_time then
+			self.jump_buff_curr = 0
+		elseif self.jump_buff_curr > 0 then
+			self.jump_buff_curr += 1
+		end
+		
+		if btnp(🅾️) then
+			self.jump_buff_curr = 1
+		end
+
+		if self.grounded then
+			if self.jump_buff_curr>0
+					 and self.jump_buff_curr<self.jump_buff_time
+					 then
+				self.jump_buff_curr = 0
+				self.jumped = true
+				return true 
+			else
+				self.jumped = false
+				self.coyote_curr = 0
+			end
+		else
+			if self.coyote_curr<self.coyote_time
+						and btnp(🅾️) 
+						and not self.jumped then
+				self.coyote_curr = self.coyote_time
+				self.jumped = true
+				return true
+			end
+			self.coyote_curr += 1
+		end
 		return false
 	end,
 	
 	on_ground = function(self)
 		return collide_spr(self.x,self.y+8,7,0.000001,0) 
-					or self:collide_blocks(self.x,self.y+8,8,0.1)
+			or self:collide_blocks(self.x,self.y+8,8,0.1)
 	end,
 
 }
@@ -530,10 +561,17 @@ b_slime = block:new({
 	sprt_ui = 130,
 	sprt = 131,
 	vel_y = -10,
+	p_jumped_frm = 0,
 	
 	update = function(self)
+		if self.p_jumped_frm == 1 then
+			self.p_jumped_frm = 0
+			p.jumped = true
+		end
 		if self.active and collide_rect(p.x,p.y,8,8,self.x,self.y-0.01,8,2) then
 			p.vel_y = self.vel_y
+			p.jumped = true
+			self.p_jumped_frm = 1
 		end
 		--[[
 		-- delete test --
