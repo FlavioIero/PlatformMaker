@@ -188,6 +188,13 @@ function collide_spr(x,y,w,h,f)
 								fget(mget(tx2,ty1),f) or
 								fget(mget(tx2,ty2),f)
 end
+
+-- other
+function appr(val,target,amount)
+ return val > target 
+     and max(val - amount, target) 
+     or min(val + amount, target)
+end
 -->8
 -- player --
 
@@ -197,10 +204,10 @@ player = {
  max_fall = 8,
  weight = 1.4,
  max_vel_x = 3,
-	accel = 2.7,
-	ground_fric = 1.6, -- should be less than accel
+	accel = 1.6,
+	ground_fric = 1, -- should be less than accel
 	air_fric = 0.45,
-	jump_buff_time = 5,
+	jump_buff_time = 5, 
 	coyote_time = 3,
 	--------------------
 	states = {jump=1,build=2,switch=3},
@@ -228,6 +235,9 @@ player = {
 	switch_pressed = false,
 	-- particles
 	land_n = 8,
+	jump_dist_time = 2,
+	jump_n = 5,
+	jump_dist_curr = 0,
 	
 	
 	new = function(self,tbl)
@@ -276,17 +286,44 @@ player = {
 	land_particles = function(self)
 		for i=0,self.land_n do
 			pm:add_particle(particle:new({
-					x = self.x+rnd(8),
-					y = self.y+8,
-					l = 4+rnd(7),
-					r = rnd(2),
-					minvelx = 0.5,
-					minvely = 0.5,
-					col = rnd({5,6}),
-					velx = rnd(2)-rnd(2),
-					vely = -1.5-rnd(0.5),
-					weight = 0.4,
+				x = self.x+rnd(8),
+				y = self.y+8,
+				l = 4+rnd(7),
+				r = rnd(2),
+				minvelx = 0.5,
+				minvely = 0.5,
+				col = rnd({5,6}),
+				velx = rnd(2)-rnd(2),
+				vely = -1.5-rnd(0.5),
+				weight = 0.4,
 			}))
+		end
+	end,
+	
+	jump_particles = function(self) 
+		if self.just_jumped then
+			self.jump_dist_curr = 0 end
+			
+		if self.jumped or self.just_jumped then
+				if self.jump_dist_curr%self.jump_dist_time==0
+							and self.jump_dist_curr<=self.jump_n*self.jump_dist_time then
+					self.jump_dist_curr += 1
+					pm:add_particle(particle:new({
+						x = self.x+3,
+						y = self.y+8,
+						l = 5,
+						r = 0,
+						minvelx = 0,
+						minvely = 0,
+						col = 6,
+						velx = 0,
+						vely = 0,
+						weight = 0,
+					}))
+				end
+				self.jump_dist_curr += 1
+		else
+			self.jump_dist_curr = 0
 		end
 	end,
 	
@@ -367,7 +404,8 @@ player = {
 		
 		if not lgrounded and self.grounded then
 			self:land_particles() end
-	end,
+			
+	end, -- end handle_input()
 	
 	apply_friction = function(self)
 		if self.grounded then
@@ -478,6 +516,8 @@ player = {
 	end,
 	
 	can_jump = function(self)
+		self.just_jumped = false
+		
 		if self.jump_buff_curr > self.jump_buff_time then
 			self.jump_buff_curr = 0
 		elseif self.jump_buff_curr > 0 then
@@ -487,14 +527,14 @@ player = {
 		if btnp(🅾️) then
 			self.jump_buff_curr = 1
 		end
-
+		
 		if self.grounded then
 			if self.jump_buff_curr>0
 					 and self.jump_buff_curr<self.jump_buff_time
 					 then
 				self.jump_buff_curr = 0
 				self.jumped = true
-				return true 
+				self.just_jumped = true 
 			else
 				self.jumped = false
 				self.coyote_curr = 0
@@ -505,11 +545,12 @@ player = {
 						and not self.jumped then
 				self.coyote_curr = self.coyote_time
 				self.jumped = true
-				return true
+				self.just_jumped = true
 			end
 			self.coyote_curr += 1
 		end
-		return false
+		self:jump_particles()
+		return self.just_jumped
 	end,
 	
 	on_ground = function(self)
@@ -1030,7 +1071,7 @@ __map__
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-0000000000000000000040404040404040404040400000400000404040404000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000000000000000013131313131340404040400000400000404040404000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000040000000400000000000400000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000131313131313000000000000000040000000400000000000400000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 0000000000000000000000000000000040000000400000000000400000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
