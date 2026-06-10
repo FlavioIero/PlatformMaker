@@ -10,6 +10,13 @@ p_sp = {} -- will be in level builder
 bm = {}
 pm = {}
 
+-- particles
+make_parts = true
+wind = 50 -- for particles
+wind_dir = 1
+wind_vel = 1
+max_wind = 100
+
 p = {}
 -- const --
 
@@ -57,11 +64,12 @@ function _init()
 	
 	-- debug
 	block_types = {
-			b_normal = b_normal,
-			b_slime 	= b_slime,
-			b_switch = b_switch,
-			b_glass 	= b_glass,
-			b_tnt    = b_tnt}
+		b_normal = b_normal,
+		b_slime 	= b_slime,
+		b_switch = b_switch,
+		b_glass 	= b_glass,
+		b_tnt    = b_tnt,
+	}
 
 	bm = blocks_mng:new()
 	
@@ -71,7 +79,48 @@ function _init()
 	bm:add_blocks(block_types.b_switch,200)
 	bm:add_blocks(block_types.b_glass,200)
 	
+	-- particles
 	pm = particles_manager:new()
+	
+	if make_parts then
+		for i=1,30 do
+			pm:add_particle(particle:new({
+				x = -rnd(30)+rnd(140),
+				y = rnd(128),
+				col = rnd({0,1,9,10}),
+				r = flr(rnd(2)),
+				velx = rnd(0.3)*sgn(wind),
+				vely = -rnd(0.3),
+				weight = 10+rnd(70),
+				opp = rnd(1),
+				
+				init = function(self)
+					self.max_velx = self.velx*4
+					self.vel_x = 0
+				end,
+				
+				update = function(self)
+					--self.velx += (wind - self.velx) * 0.01
+					self.velx = clamp(self.velx,-self.max_velx,self.max_velx)
+					local lx = self.x
+					self.x += wind*(1/self.weight)
+					self.x += self.opp*(lx-self.x)
+					self.y += self.vely
+					if (self.y<-5) self.y = 130
+					if self.x < -40 or self.x > 170 then
+						--self.x = wind_dir==1 and -2-rnd(25) or 128+rnd(25) end
+						self.x = -rnd(30)+rnd(140)
+						self.y = 128+rnd(40)
+					end
+				end,
+				
+				draw = function(self)
+					rectfill(self.x,self.y,self.x+self.r,self.y+self.r,self.col)
+				end,
+			}))
+		end
+	end
+	
 end
 
 function update_menu()
@@ -110,6 +159,13 @@ function update_game()
 	p:update()
 	bm:update()
 	pm:update()
+	
+	-- wind
+	wind += wind_dir*wind_vel
+	if abs(wind)>max_wind then
+		wind = max_wind*wind_dir
+		wind_dir = -wind_dir 
+	end
 end
 
 function draw_game()
@@ -183,17 +239,17 @@ function collide_spr(x,y,w,h,f)
 	local tx2 = flr(br.x/8)
 	local ty2 = flr(br.y/8)
 	
-	return fget(mget(tx1,ty1),f) or
-								fget(mget(tx1,ty2),f) or
-								fget(mget(tx2,ty1),f) or
-								fget(mget(tx2,ty2),f)
+	return fget(mget(tx1,ty1),f)
+					or fget(mget(tx1,ty2),f)
+					or	fget(mget(tx2,ty1),f)
+					or	fget(mget(tx2,ty2),f)
 end
 
 -- other
 function appr(val,target,amount)
  return val > target 
-     and max(val - amount, target) 
-     or min(val + amount, target)
+     and max(val-amount,target) 
+     or min(val+amount,target)
 end
 
 function clamp(val,mi,ma)
@@ -412,22 +468,6 @@ player = {
 			
 	end, -- end handle_input()
 	
-	apply_friction = function(self)
-		if self.grounded then
-			if self.vel_x > 0 then
-				self.vel_x = max(0,self.vel_x-self.ground_fric)
-			elseif self.vel_x < 0 then
-				self.vel_x = min(0,self.vel_x+self.ground_fric)
-			end
-		else
-			if self.vel_x > 0 then
-				self.vel_x = max(0,self.vel_x-self.air_fric)
-			elseif self.vel_x < 0 then
-				self.vel_x = min(0,self.vel_x+self.air_fric)
-			end
-		end
-	end,
-	
 	build_mode = function(self)
 		self.switch_pressed = false
 		if btnp(❎) and self.switch_curr == 0 then
@@ -514,10 +554,19 @@ player = {
 	apply_gravity = function(self)
 		if self.grounded then
 			self.vel_y = 0 
-			self.y = flr(self.y)
 		else
 			self.vel_y = min(self.max_fall,self.vel_y+g*self.weight)
 		end
+	end,
+	
+	apply_friction = function(self)
+		local fric_amount
+		if self.grounded then
+			fric_amount = self.ground_fric
+		else
+			fric_amount = self.air_fric
+		end
+		self.vel_x = appr(self.vel_x,0,fric_amount)
 	end,
 	
 	can_jump = function(self)
@@ -950,7 +999,12 @@ particle = {
    tbl.velx = sgn(tbl.velx)*tbl.minvelx end
   if abs(tbl.vely) < tbl.minvely then
    tbl.vely = sgn(tbl.vely)*tbl.minvely end
+  tbl:init()
   return tbl
+	end,
+	
+	init = function(self)
+		-- abstract
 	end,
 	
 	update = function(self)
@@ -981,7 +1035,7 @@ particles_manager = {
 	update = function(self) 
 		for p in all(self.parts) do 
 			p:update()
-			if (p.l < 0) del(self.parts,p)
+			if (p.l<=0) del(self.parts,p)
 		end
 	end,
 	
@@ -1089,5 +1143,5 @@ __map__
 4141414141414141414141414141410040000000400000000000400000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 4040404040404040404040404040404040404040404040404040404040404000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __sfx__
-0001000025650286502c6502e6503165034650376503a6503c6503e6503f6503b65037650336502e65029650246501f6501a650146500f6500a65004650006500060007600046000160001600272002720000000
+0001000025610286102c6102e6103161034610376103a6103c6103e6103f6103b61037610336102e61029610246101f6101a610146100f6100a61004610006100060007600046000160001600272002720000000
 00010000206502465027650296502b6502d6502f6503065031650316503265031650306502f6502c6502b650296502765025650226501f6501d6501a6501665012650106500e6500c6500a650086500665006650
